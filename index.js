@@ -22,23 +22,36 @@ const run = async() => {
 
         const BookingsCollection = client.db('doctorsDen').collection('bookings');
 
-        app.get('/appointmentOptions', async(req, res) =>{
+
+        app.get( "/appointmentOptions", async (req,res) => {
             const date = req.query.date;
             const query = {};
             const options = await appointmentOptionCollections.find(query).toArray();
-            const bookingQuery = {appointmentDate : date};
+            const bookingQuery = {appointmentDate: date};
             const alreadyBooked = await BookingsCollection.find(bookingQuery).toArray();
-            options.forEach( option => {
+            options.forEach(option =>{
                 const optionsBooked = alreadyBooked.filter(book => book.treatment === option.name);
                 const bookedSlot = optionsBooked.map(book => book.slot);
-                const remainingSlot = option.slots.filter(slot => !bookedSlot.includes(slot));
+                const remainingSlot = option.slots.filter(slot => !bookedSlot.includes(slot) )
                 option.slots = remainingSlot;
             })
             res.send(options);
-        })
+        } )
 
         app.post('/bookings' , async(req,res) => {
             const bookings = req.body;
+            const query = {
+                email: bookings.email,
+                appointmentDate : bookings.appointmentDate,
+                treatment: bookings.treatment
+            }
+            const alreadyBooked =  await BookingsCollection.find(query).toArray();
+
+            if (alreadyBooked.length) {
+                const message = `you already have a booking on ${bookings.appointmentDate}`
+                return res.send({acknowledged: false, message})
+            }
+
             const result = await BookingsCollection.insertOne(bookings);
             res.send(result);
         })
